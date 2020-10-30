@@ -1,8 +1,19 @@
 from requests import request
 from os import environ as env
 from cabot.cabotapp.alert import AlertPlugin
+from django.conf import settings
+from django.template import Context, Template
 
 VICTOROPS_URL = 'https://api.victorops.com/api-public/v1'
+
+details_template = """Service {{ service.name }} {{ scheme }}://{{ host }}{% url 'service' pk=service.id %} {% if service.overall_status != service.PASSING_STATUS %}alerting with status: {{ service.overall_status }}{% else %}is back to normal{% endif %}.
+{% if service.overall_status != service.PASSING_STATUS %}
+CHECKS FAILING:{% for check in service.all_failing_checks %}
+  FAILING - {{ check.name }} - Type: {{ check.check_category }} - Importance: {{ check.get_importance_display }}{% endfor %}
+{% else %}
+ALL CHECKS PASSING
+{% endif %}
+"""
 
 class VictorOpsAlertPlugin(AlertPlugin):
     name = "VictorOps"
@@ -11,10 +22,15 @@ class VictorOpsAlertPlugin(AlertPlugin):
     version = "0.1.0"
 
     def send_alert(self, service, users, duty_officers):
-        message = "TODO"
+        message = "{} status for service {}".format(service.overall_status, service.name)
+        details = Template(details_template).render(Context({
+            'service': service,
+            'host': settings.WWW_HTTP_HOST,
+            'scheme': settings.WWW_SCHEME
+        }))
         for user in users:
-            print('Notification for: {} - {}'.format(user, message))
-            self._send_victorops_alert(user, message, "DETAILS")
+            print('Sending Alert: {}'.format(message))
+            self._send_victorops_alert(user, message, details)
 
         return True
 
