@@ -10,7 +10,7 @@ VICTOROPS_URL = 'https://api.victorops.com/api-public/v1'
 class VictorOpsAlertPlugin(AlertPlugin):
     name = "VictorOps"
     slug = "cabot_alert_victorops"
-    author = "Jakub Sokołowski"
+    author = "Jakub Sokolowski"
     version = "0.1.0"
 
     def send_alert(self, service, users, duty_officers):
