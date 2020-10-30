@@ -12,7 +12,6 @@ class VictorOpsAlertPlugin(AlertPlugin):
     slug = "cabot_alert_victorops"
     author = "Jakub Sokołowski"
     version = "0.1.0"
-    font_icon = "fa fa-code"
 
     def send_alert(self, service, users, duty_officers):
         message = service.get_status_message()
