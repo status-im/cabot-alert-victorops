@@ -30,11 +30,9 @@ class VictorOpsAlertPlugin(AlertPlugin):
             'scheme': settings.WWW_SCHEME
         }))
         for user in users:
-            print('Sending Alert: {}'.format(message))
             vc_login = self._get_vc_login(user)
+            print('Sending VictorOps Alert to {}: {}'.format(vc_login, message))
             self._send_victorops_alert(vc_login, message, details)
-
-        return True
 
     # Cabot username doesn't have to be the same as VictorOps one
     def _get_vc_login(self, user):
@@ -61,6 +59,7 @@ class VictorOpsAlertPlugin(AlertPlugin):
 
     def _get_policy(self):
         resp = self._query('GET', 'policies')
+        # TODO: Possibly pick based on name?
         return resp.json()["policies"][0]["policy"]
 
     def _query(self, method, path, data={}):
