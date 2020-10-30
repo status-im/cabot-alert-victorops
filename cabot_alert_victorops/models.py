@@ -1,6 +1,6 @@
 import requests
 from os import environ as env
-from cabot.plugins.models import AlertPlugin
+from cabot.cabotapp.alert import AlertPlugin
 
 from logging import getLogger
 logger = getLogger(__name__)
