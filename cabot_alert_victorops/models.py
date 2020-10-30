@@ -1,6 +1,7 @@
 from requests import request
 from os import environ as env
-from cabot.cabotapp.alert import AlertPlugin
+from cabot.cabotapp.alert import AlertPlugin, AlertPluginUserData
+from django.db import models
 from django.conf import settings
 from django.template import Context, Template
 
@@ -30,20 +31,25 @@ class VictorOpsAlertPlugin(AlertPlugin):
         }))
         for user in users:
             print('Sending Alert: {}'.format(message))
-            self._send_victorops_alert(user, message, details)
+            vc_login = self._get_vc_login(user)
+            self._send_victorops_alert(vc_login, message, details)
 
         return True
 
-    def _send_victorops_alert(self, user, message, details):
-        self.username = env.get('VICTOROPS_USERNAME')
-        if self.username is None:
-            raise Exception("VICTOROPS_USERNAME env variable not found!")
+    # Cabot username doesn't have to be the same as VictorOps one
+    def _get_vc_login(self, user):
+        results = VictorOpsAlertPluginUserData.objects.filter(user__user__exact=user)
+        if results.first() is not None and results.first().victorops_login != "":
+            return results.first().victorops_login
+        else:
+            return user.username
 
+    def _send_victorops_alert(self, user, message, details):
         policy = self._get_policy()
         data = {
             "summary": message,
             "details": details,
-            "userName": self.username,
+            "userName": user,
             "targets": [{
                 "type": "EscalationPolicy",
                 "slug": policy["slug"],
@@ -72,3 +78,12 @@ class VictorOpsAlertPlugin(AlertPlugin):
         resp = request(method, VICTOROPS_URL+'/'+path, json=data, headers=headers)
         resp.raise_for_status()
         return resp
+
+class VictorOpsAlertPluginUserData(AlertPluginUserData):
+    name = "VictorOps Plugin"
+    victorops_login = models.CharField(max_length=30, blank=True)
+
+    def serialize(self):
+        return {
+            "victorops_login": self.victorops_login
+        }

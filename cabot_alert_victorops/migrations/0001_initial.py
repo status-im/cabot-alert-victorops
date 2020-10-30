@@ -21,4 +21,15 @@ class Migration(migrations.Migration):
             },
             bases=('cabotapp.alertplugin',),
         ),
+        migrations.CreateModel(
+            name='VictorOpsAlertPluginUserData',
+            fields=[
+                ('alertpluginuserdata_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='cabotapp.AlertPluginUserData')),
+                ('victorops_login', models.CharField(max_length=30, blank=True)),
+            ],
+            options={
+                'abstract': False,
+            },
+            bases=('cabotapp.alertpluginuserdata',),
+        ),
     ]
