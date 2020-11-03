@@ -20,3 +20,7 @@ This plugin requries two environment variables:
 VICTOROPS_APP_ID=<your_victorops_app_id>
 VICTOROPS_API_KEY=<your_victorops_api_key>
 ```
+
+# Known Issues / TODO
+
+This plugin needs to be able to update existing incidents instead of creating new ones for each state change.
