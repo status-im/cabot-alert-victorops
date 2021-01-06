@@ -59,8 +59,13 @@ class VictorOpsAlertPlugin(AlertPlugin):
 
     def _get_policy(self):
         resp = self._query('GET', 'policies')
-        # TODO: Possibly pick based on name?
-        return resp.json()["policies"][0]["policy"]
+        # Return Infrastructure policy
+        for policy in resp.json()["policies"]:
+            if policy["team"]["name"] == "Infrastructure":
+                return policy["policy"]
+
+        # TODO: Naive fallback to first policy available
+        return policies[0]["policy"]
 
     def _query(self, method, path, data={}):
         self.app_id = env.get('VICTOROPS_APP_ID')
