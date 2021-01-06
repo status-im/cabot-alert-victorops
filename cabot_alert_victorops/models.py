@@ -22,17 +22,37 @@ class VictorOpsAlertPlugin(AlertPlugin):
     author = "Jakub Sokolowski"
     version = "0.1.0"
 
+    # Store existing incidents for services to be able to resolve them.
+    incidents = {}
+
     def send_alert(self, service, users, duty_officers):
-        message = "{} status for service {}".format(service.overall_status, service.name)
         details = Template(details_template).render(Context({
             'service': service,
             'host': settings.WWW_HTTP_HOST,
             'scheme': settings.WWW_SCHEME
         }))
+
         for user in users:
             vc_login = self._get_vc_login(user)
-            print('Sending VictorOps Alert to {}: {}'.format(vc_login, message))
-            self._send_victorops_alert(vc_login, message, details)
+
+            for check in service.all_failing_checks():
+                check, message = self._gen_check_message(service, check)
+                print('Sending VictorOps Incident for {}: {}'.format(vc_login, message))
+                incident = self._create_victorops_incident(vc_login, message, details)
+                self.incidents[check] = incident
+
+            for check in service.all_passing_checks():
+                check, message = self._gen_check_message(service, check)
+                if check not in self.incidents:
+                    continue
+                print('Resolving VictorOps Incident for {}: {}'.format(vc_login, message))
+                incident = self.incidents.pop(check)
+                self._resolve_victorops_incident(vc_login, message, incident)
+
+    def _gen_check_message(self, service, check):
+        check = "{}/{}".format(service.name, check.name)
+        message = "{}: {}".format(service.overall_status, check)
+        return check, message
 
     # Cabot username doesn't have to be the same as VictorOps one
     def _get_vc_login(self, user):
@@ -42,7 +62,7 @@ class VictorOpsAlertPlugin(AlertPlugin):
         else:
             return user.username
 
-    def _send_victorops_alert(self, user, message, details):
+    def _create_victorops_incident(self, user, message, details):
         policy = self._get_policy()
         data = {
             "summary": message,
@@ -55,7 +75,17 @@ class VictorOpsAlertPlugin(AlertPlugin):
         }
         resp = self._query('POST', 'incidents', data)
         resp.raise_for_status()
-        return True
+        return resp.json()["incidentNumber"]
+
+    def _resolve_victorops_incident(self, user, message, incident_number):
+        data = {
+            "userName": user,
+            "message": message,
+            "incidentNames": [incident_number],
+        }
+        resp = self._query('PATCH', 'incidents/resolve', data)
+        resp.raise_for_status()
+        return resp.json()
 
     def _get_policy(self):
         resp = self._query('GET', 'policies')
