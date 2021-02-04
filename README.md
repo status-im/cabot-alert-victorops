@@ -15,11 +15,14 @@ CABOT_PLUGINS_ENABLED=cabot_alert_victorops,<other plugins>
 
 # Configuration
 
-This plugin requries two environment variables:
+This plugin requries the following environment variables to be set:
 ```sh
 VICTOROPS_APP_ID=<your_victorops_app_id>
 VICTOROPS_API_KEY=<your_victorops_api_key>
+VICTOROPS_REDIS_URL=redis://<host>:<port>/<db>
 ```
+
+See the [redis-py docs](https://redis-py.readthedocs.io/en/stable/#redis.Redis.from_url) for more info about the supported URL schemes for Redis.
 
 # Known Issues / TODO
 
