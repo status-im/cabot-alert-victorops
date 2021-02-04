@@ -1,3 +1,4 @@
+import redis
 from requests import request
 from os import environ as env
 from cabot.cabotapp.alert import AlertPlugin, AlertPluginUserData
@@ -22,10 +23,11 @@ class VictorOpsAlertPlugin(AlertPlugin):
     author = "Jakub Sokolowski"
     version = "0.1.0"
 
-    # Store existing incidents for services to be able to resolve them.
-    incidents = {}
-
     def send_alert(self, service, users, duty_officers):
+        # Redis is used to store existing incidents,
+        # so that multiple Celery workers can resolve them
+        r = redis.from_url(env.get('REDIS_URL'))
+
         details = Template(details_template).render(Context({
             'service': service,
             'host': settings.WWW_HTTP_HOST,
@@ -39,15 +41,15 @@ class VictorOpsAlertPlugin(AlertPlugin):
                 check, message = self._gen_check_message(service, check)
                 print('Sending VictorOps Incident for {}: {}'.format(vc_login, message))
                 incident = self._create_victorops_incident(vc_login, message, details)
-                self.incidents[check] = incident
+                r.set(check, incident)
 
             for check in service.all_passing_checks():
                 check, message = self._gen_check_message(service, check)
-                if check not in self.incidents:
+                if r.get(check) is None:
                     continue
                 print('Resolving VictorOps Incident for {}: {}'.format(vc_login, message))
-                incident = self.incidents.pop(check)
-                self._resolve_victorops_incident(vc_login, message, incident)
+                self._resolve_victorops_incident(vc_login, message, r.get(check))
+                r.delete(check)
 
     def _gen_check_message(self, service, check):
         check = "{}/{}".format(service.name, check.name)
