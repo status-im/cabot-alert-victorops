@@ -26,7 +26,7 @@ class VictorOpsAlertPlugin(AlertPlugin):
     def send_alert(self, service, users, duty_officers):
         # Redis is used to store existing incidents,
         # so that multiple Celery workers can resolve them
-        r = redis.from_url(env.get('REDIS_URL'))
+        r = redis.from_url(env.get('VICTOROPS_REDIS_URL'))
 
         details = Template(details_template).render(Context({
             'service': service,
