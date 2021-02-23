@@ -5,6 +5,9 @@ from cabot.cabotapp.alert import AlertPlugin, AlertPluginUserData
 from django.db import models
 from django.conf import settings
 from django.template import Context, Template
+from celery.utils.log import get_task_logger
+
+log = get_task_logger(__name__)
 
 VICTOROPS_URL = 'https://api.victorops.com/api-public/v1'
 
@@ -39,7 +42,7 @@ class VictorOpsAlertPlugin(AlertPlugin):
 
             for check in service.all_failing_checks():
                 check, message = self._gen_check_message(service, check)
-                print('Sending VictorOps Incident for {}: {}'.format(vc_login, message))
+                log.info('Sending VictorOps Incident for %s: %s', vc_login, message)
                 incident = self._create_victorops_incident(vc_login, message, details)
                 r.set(check, incident)
 
@@ -47,7 +50,7 @@ class VictorOpsAlertPlugin(AlertPlugin):
                 check, message = self._gen_check_message(service, check)
                 if r.get(check) is None:
                     continue
-                print('Resolving VictorOps Incident for {}: {}'.format(vc_login, message))
+                log.info('Resolving VictorOps Incident for %s: %s', vc_login, message)
                 self._resolve_victorops_incident(vc_login, message, r.get(check))
                 r.delete(check)
 
@@ -76,7 +79,6 @@ class VictorOpsAlertPlugin(AlertPlugin):
             }],
         }
         resp = self._query('POST', 'incidents', data)
-        resp.raise_for_status()
         return resp.json()["incidentNumber"]
 
     def _resolve_victorops_incident(self, user, message, incident_number):
@@ -86,7 +88,6 @@ class VictorOpsAlertPlugin(AlertPlugin):
             "incidentNames": [incident_number],
         }
         resp = self._query('PATCH', 'incidents/resolve', data)
-        resp.raise_for_status()
         return resp.json()
 
     def _get_policy(self):
@@ -112,6 +113,7 @@ class VictorOpsAlertPlugin(AlertPlugin):
             "X-VO-Api-Key": self.api_key,
         }
         resp = request(method, VICTOROPS_URL+'/'+path, json=data, headers=headers)
+        log.debug('JSON Response: %s', resp.json())
         resp.raise_for_status()
         return resp
 
