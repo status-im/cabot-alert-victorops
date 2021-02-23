@@ -42,13 +42,19 @@ class VictorOpsAlertPlugin(AlertPlugin):
 
             for check in service.all_failing_checks():
                 check, message = self._gen_check_message(service, check)
+                incident = r.get(check)
+                if incident is not None:
+                    log.warning('VictorOps incident already exists: %s', incident)
+                    continue
                 log.info('Sending VictorOps Incident for %s: %s', vc_login, message)
                 incident = self._create_victorops_incident(vc_login, message, details)
                 r.set(check, incident)
 
             for check in service.all_passing_checks():
                 check, message = self._gen_check_message(service, check)
-                if r.get(check) is None:
+                incident = r.get(check)
+                if incident is None:
+                    log.warning('VictorOps incident did not exists!')
                     continue
                 log.info('Resolving VictorOps Incident for %s: %s', vc_login, message)
                 self._resolve_victorops_incident(vc_login, message, r.get(check))
